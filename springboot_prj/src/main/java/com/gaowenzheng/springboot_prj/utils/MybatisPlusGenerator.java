@@ -8,10 +8,14 @@ import org.springframework.core.io.ClassPathResource;
 import java.sql.Types;
 import java.util.Collections;
 import java.util.Properties;
+import java.util.Scanner;
 
 public class MybatisPlusGenerator {
     public static void main(String[] args) {
-        fastGenerate("user");
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("请输入表名：");
+        String table = scanner.nextLine();
+        fastGenerate(table);
     }
 
     public static void fastGenerate(String table){
@@ -24,11 +28,12 @@ public class MybatisPlusGenerator {
         String url = properties.getProperty("spring.datasource.url");
         String username = properties.getProperty("spring.datasource.username");
         String password = properties.getProperty("spring.datasource.password");
+        //生成文件
         FastAutoGenerator.create(url, username, password)
                 .globalConfig(builder -> {
                     builder.author("gaowenzheng") // 设置作者
                             .enableSpringdoc()
-                            .fileOverride() // 覆盖已生成文件
+                            .disableOpenDir()
                             .outputDir(filePath); // 指定输出目录
                 })
                 .dataSourceConfig(builder -> builder.typeConvertHandler((globalConfig, typeRegistry, metaInfo) -> {
@@ -38,7 +43,6 @@ public class MybatisPlusGenerator {
                         return DbColumnType.INTEGER;
                     }
                     return typeRegistry.getColumnType(metaInfo);
-
                 }))
                 .packageConfig(builder -> {
                     builder.parent("com.gaowenzheng") // 设置父包名
@@ -47,7 +51,11 @@ public class MybatisPlusGenerator {
                 })
                 .strategyConfig(builder -> {
                     builder.addInclude(table); // 设置需要生成的表名
-//                            .addTablePrefix("t_", "c_"); // 设置过滤表前缀
+                    builder.controllerBuilder().enableRestStyle();
+                    builder.entityBuilder().enableFileOverride();//!!覆盖实体类!!
+                }).templateConfig(builder -> {
+                    builder.mapper("/templates/mapper.java.vm");
+                    builder.controller("/templates/controller.java.vm");
                 })
                 .templateEngine(new VelocityTemplateEngine()) // 使用Freemarker引擎模板，默认的是Velocity引擎模板
                 .execute();
